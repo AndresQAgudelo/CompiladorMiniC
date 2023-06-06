@@ -1,0 +1,77 @@
+// AST
+digraph AST {
+	node [color=deepskyblue shape=box style=filled]
+	edge [arrowhead=none]
+	n01 [label=Funcion]
+	n02 [label="Func Declaration
+type:int 
+external:False
+"]
+	n03 [label="Funcion 
+name:main 
+"]
+	n04 [label="Param
+Type:int 
+ name:c"]
+	n03 -> n04
+	n02 -> n03
+	n05 [label="Var declaration
+type: int
+name: x"]
+	n02 -> n05
+	n06 [label="Binary\nop:="]
+	n07 [label="ID=x"]
+	n06 -> n07
+	n08 [label="INUMBER=2"]
+	n06 -> n08
+	n02 -> n06
+	n09 [label="Binary\nop:+="]
+	n10 [label="ID=x"]
+	n09 -> n10
+	n11 [label="INUMBER=2"]
+	n09 -> n11
+	n02 -> n09
+	n12 [label="Binary\nop:-="]
+	n13 [label="ID=x"]
+	n12 -> n13
+	n14 [label="INUMBER=2"]
+	n12 -> n14
+	n02 -> n12
+	n15 [label="Binary\nop:=="]
+	n16 [label="ID=x"]
+	n15 -> n16
+	n17 [label="INUMBER=2"]
+	n15 -> n17
+	n02 -> n15
+	n18 [label="Binary\nop:!="]
+	n19 [label="ID=x"]
+	n18 -> n19
+	n20 [label="INUMBER=2"]
+	n18 -> n20
+	n02 -> n18
+	n21 [label="Binary\nop:>"]
+	n22 [label="ID=x"]
+	n21 -> n22
+	n23 [label="INUMBER=2"]
+	n21 -> n23
+	n02 -> n21
+	n24 [label="Binary\nop:>="]
+	n25 [label="ID=x"]
+	n24 -> n25
+	n26 [label="INUMBER=2"]
+	n24 -> n26
+	n02 -> n24
+	n27 [label="Binary\nop:<"]
+	n28 [label="ID=x"]
+	n27 -> n28
+	n29 [label="INUMBER=2"]
+	n27 -> n29
+	n02 -> n27
+	n30 [label="Binary\nop:<="]
+	n31 [label="ID=x"]
+	n30 -> n31
+	n32 [label="INUMBER=2"]
+	n30 -> n32
+	n02 -> n30
+	n01 -> n02
+}

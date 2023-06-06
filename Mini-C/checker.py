@@ -14,7 +14,7 @@
 # Revisa diferentes aspectos del codigo:
 #
 # 1. Todos los IDENT deben de estar debidamente declarados, en su
-#    respectivo contexto (env)
+#    respectivo contexto (env)        update: Listo
 #
 # 2. Revisar los tipos de datos
 #    a. numeric : + - * / %
@@ -23,71 +23,70 @@
 #    d. void    : comparacion (==, !=)
 #
 # 3. Control de flujo
-#    a. Debe de existir una funcion main
-#    b. toda funcion debe de tener al menos un return
-#    c. las instrucciones break/continue deben de estar
+#    a. Debe de existir una funcion main                   update: Listo
+#    b. toda funcion debe de tener al menos un return      update: Listo
+#    c. las instrucciones break/continue deben de estar    update: Listo
 #       definidas dentro de un while/for
 #
 # ---------------------------------------------------------------------
 
 from mcast import *
-
-# ---------------------------------------------------------------------
-#  Tabla de Simbolos
-# ---------------------------------------------------------------------
+from colorama import init, Fore, Back, Style
 
 class Symtab:
-    '''
-    Una tabla de símbolos.  Este es un objeto simple que sólo
-    mantiene una hashtable (dict) de nombres de simbolos y los
-    nodos de declaracion o definición de funciones a los que se
-    refieren.
-    Hay una tabla de simbolos separada para cada elemento de
-    código que tiene su propio contexto (por ejemplo cada función,
-    clase, tendra su propia tabla de simbolos). Como resultado,
-    las tablas de simbolos se pueden anidar si los elementos de
-    código estan anidados y las búsquedas de las tablas de
-    simbolos se repetirán hacia arriba a través de los padres
-    para representar las reglas de alcance léxico.
-    '''
+
     class SymbolDefinedError(Exception):
-        '''
-        Se genera una excepción cuando el código intenta agregar
-        un simbol a una tabla donde el simbol ya se ha definido.
-        Tenga en cuenta que 'definido' se usa aquí en el sentido
-        del lenguaje C, es decir, 'se ha asignado espacio para el
-        simbol', en lugar de una declaración.
-        '''
         pass
         
-    def __init__(self, parent=None):
-        '''
-        Crea una tabla de símbolos vacia con la tabla de
-        simbolos padre dada.
-        '''
+    def __init__(self, parent=None, name=None, lineno=0):
+        self.name = name
         self.entries = {}
         self.parent = parent
+        self.bealoop = False
+        self.Return = False 
+        self.lieneo = lineno
         if self.parent:
             self.parent.children.append(self)
         self.children = []
+
+        exception = ["While", "For", "If", "Global"]
+        if name in exception:
+            self.Return = True
+
+    def haveReturn(self):
+        self.Return = True
+
+    def checkReturn(self):
+        for child in self.children:
+            child.checkReturn()
+        if not self.Return:
+            print("\x1b[1;31m"+self.name+"\x1b[0;31m"+f" no tiene almenos un return, linea: {self.lieneo}"+Fore.RESET )
+            # print( "no: ",self.name)
+        return False
+    
+    def printenv(self):
+        for child in self.children:
+            child.printenv()
+        print(" ", self.name, ": ", self.Return)
+        for i in self.entries:
+            print("   ", i)
+
+    def iamaloop(self):
+        self.bealoop = True
         
-    def add(self, name, value):
-        '''
-        Agrega un simbol con el valor dado a la tabla de simbolos.
-        El valor suele ser un nodo AST que representa la declaración
-        o definición de una función, variable (por ejemplo, Declaración
-        o FuncDeclaration)
-        '''
-        if name in self.entries:
+    def add(self, str, value):
+        if str in self.entries:
             raise Symtab.SymbolDefinedError()
-        self.entries[name] = value
-        
+        self.entries[str] = value
+    
+    def amialoop(self):
+        if self.bealoop:
+            return True
+        elif self.parent:
+            return self.parent.amialoop()
+        return False
+
     def get(self, name):
-        '''
-        Recupera el símbol con el nombre dado de la tabla de
-        simbol, recorriendo hacia arriba a traves de las tablas
-        de simbol principales si no se encuentra en la actual.
-        '''
         if name in self.entries:
             return self.entries[name]
         elif self.parent:
@@ -95,189 +94,136 @@ class Symtab:
         return None
 
 class Checker(Visitor):
-    '''
-    Visitante que crea y enlaza tablas de simbolos al AST
-    ''' 
+    def __init__(self):
+        self.curr_symtab = Symtab()
 
-    In_Loop = False
-    iteracion_actual = 0
-    condicion_parada = 0
-    def _add_symbol(self, node, env: Symtab):
-        '''
-        Intenta agregar un símbolo para el nodo dado a
-        la tabla de símbolos actual, capturando cualquier
-        excepción que ocurra e imprimiendo errores si es
-        necesario.
-        '''
+    def _add_symbol(self, node, value, env: Symtab, lineno=0):
         try:
-            self.curr_symtab.add(node.name, node)
+            env.add(value, node)
         except Symtab.SymbolDefinedError:
-            self.error(f"Simbol '{node.name}' esta definido.")
-            
+            self.error(f"Simbolo " +"\x1b[1;31m"+ f"'{value}'"+"\x1b[0;31m"+ f" ya previamente definido, line: {lineno}")
+
+    def error(self, text):
+        print(Fore.RED+text+Fore.RESET)
+
     @classmethod
-    def check(cls, model):
+    def check(cls, model, symtable):
         checker = cls()
-        model.accept(checker, Symtab())
+        cls.symtable = symtable
+        model.accept(checker, Symtab(name="Global"))
         return checker
+        
+    def visit(self, node: TranslationUnit, env: Symtab):
+        for decl in node.decls:
+            decl.accept(self, env)    
+        if not "main" in env.entries:
+            self.error(f"No existe funcion " + "\x1b[1;31m" +"main")
+        env.checkReturn()
+        if self.symtable: 
+            print("\nTabla de simbolos: ")
+            env.printenv()
 
-    # ---- Declaration ------
-    
-    def visit(self, node: FuncDefinition, env: Symtab):
-        '''
-        1. Agregar el nombre de la función a la tabla de simbolos actual
-        2. Crear una nueva tabla de simbolos (contexto)
-        3. Agregamos los parametros a la nueva tabla de simbolos
-        4. Visitar cada una de las instrucciones del cuerpo de la funcion
-        '''
-        self._add_symbol(node, env)
-        env = Symtab(env)
+    def visit(self, node: FuncDeclaration, env: Symtab):
+        name = node.params.accept(self, None)
+        self._add_symbol(node, name, env, node.lineno)
+        newenv = Symtab(env, name, node.lineno)
+        node.params.accept(self, newenv)
 
-        for param in node.params:
-            self._add_symbol(VarDefinition(param))
-        for stmt in node.stmts:
+        for stmt in node.body:
+            stmt.accept(self, newenv)         
+
+    def visit(self, node: FuncDeclarationStmt, env):
+        if env == None:
+            return node.name
+        for stmt in node.body:
             stmt.accept(self, env)
         
-    def visit(self, node: VarDefinition, env: Symtab):
-        '''
-        1. Agregar el nombre de la variable a la tabla de simbolos actual
-        2. Visitar la expresion, si esta definida
-        '''
-        self._add_symbol(node, env)
+    def visit(self, node: TypeDeclaration, env: Symtab):
+        self._add_symbol(node, node.body, env, node.lineno)
+
+    def visit(self, node: Parameter_declaration, env: Symtab):
+        for stmt in node.decls:
+            stmt.accept(self, env)
+
+    def visit(self, node: VarDeclaration, env: Symtab):
+        if type(node.expr) == str:
+            self._add_symbol(node, node.expr, env, node.lineno)
+        else: 
+            node.expr.accept(self, env)
+        
+    def visit(self, node: WhileStmt, env: Symtab):
+        newenv = Symtab(env, "While")
+        newenv.iamaloop()
+        node.cond.accept(self, newenv)
+        for stmt in node.body:
+            stmt.accept(self, newenv)
+    
+    def visit(self, node: For, env: Symtab):
+        newenv = Symtab(env, "For")
+        newenv.iamaloop()
+        if node.init:
+            node.init.accept(self, newenv)
+        if node.expr:
+            node.expr.accept(self, newenv)
+        if node.post:
+            node.post.accept(self, newenv)
+        for stmt in node.stmts:
+            stmt.accept(self, newenv)
+    
+    def visit(self, node: IfStmt, env: Symtab):
+        newenv = Symtab(env, "If")
+        node.cond.accept(self, newenv)
+        for param in node.cons:
+            param.accept(self, newenv)
+        for param in node.altr:
+            param.accept(self, newenv)
+
+    def visit(self, node: Return, env: Symtab):
+        env.haveReturn()
         if node.expr:
             node.expr.accept(self, env)
     
-    def visit(self, node: ParamList , env: Symtab):
-        '''
-        1. Agregar el nombre de la variable a la tabla de simbolos actual
-        2. Visitar la expresion, si esta definida
-        '''
-
-        self._add_symbol(node, env)
-        if node.params:
-            for params in node.params:
-                params.accept(self, env)
-    
-    def visit(self, node: Parameter , env: Symtab):
-        self.visit(node.name)
+    def visit(self, node: Break, env: Symtab):
+        if not env.amialoop():
+            self.error(f"\x1b[1;31m" + "Break" + "\x1b[0;31m" +f" no esta dentro de un For/While, linea: {node.lineno}")
         
-
-    # Statement
-    
-    def visit(self, node: CompoundStmt, env: Symtab):
-        '''
-        1. Visitar cada una de las instrucciones
-        '''
-        self._add_symbol(node, env)
-        if node.decl:
-            for decl in node.decl:
-                decl.accept(self, env)
-        if node.stmt:
-            for stmt in node.stmt:
-                stmt.accept(self, env)
-
-    def visit(self, node: Assignment, env: Symtab):
-        '''
-        1. Visitar el hijo izquierdo
-        2. Visitar el hijo derecho
-        '''
-        self.visit(node.loc, env)
-        self.visit(node.expr, env)
-
     def visit(self, node: Binary, env: Symtab):
-        '''
-        1. Visitar el hijo izquierdo
-        2. Visitar el hijo derecho
-        '''
-        self.visit(node.left, env)
-        self.visit(node.right, env)
+        node.left.accept(self, env)
+        node.right.accept(self, env)
+        
+    def visit(self, node: Unary, env: Symtab):
+        node.expr.accept(self, env)
+ 
+    def visit(self, node: Call, env: Symtab):
+
+       # node.func.accept(self, env)
+        for param in node.args:
+            param.accept(self, env)
+        
+    def visit(self, node: ID, env: Symtab):
+        value = env.get(node.name)
+        if value is None:
+            self.error(f'La Variable '+ "\x1b[1;31m" + f"{node.name}" + "\x1b[0;31m" + f' no esta definida, linea: {node.lineno}')
+            
+    def visit(self, node: INUMBER, env: Symtab):
+        pass
+    
+    def visit(self, node: FNUMBER, env: Symtab):
+        pass
+    
+    def visit(self, node: CONST, env: Symtab):
+        pass
 
     def visit(self, node: Continue, env: Symtab):
-        '''verificar que este drento del loop'''
-        if not self.In_Loop == True:
-            self.error(node, f"Checker error, continue not inside loop")
-
-    def visit(self, node: Break, env: Symtab):
-        '''verificar que este drento del loop'''
-        if not self.In_Loop == True:
-            self.error(node, f"Checker error, break not inside loop")
-
-    def visit(self, node: IfStmt, env: Symtab):
-        '''
-        1. Visitar la condicion
-        2. Visitar las instrucciones 
-        3. Visitar las instrucciones del altr, si esta definido
-        '''
-
-        self.visit(node.cond, env)
-        env = Symtab(env)
-        self.visit(node.cons, env)
-        if node.altr:
-            self.visit(node.altr, env)
-
-    def visit(self, node: WhileLoop, env: Symtab):
-        '''
-        1. Visitar la condicion
-        2. Visitar las instrucciones del cuerpo
-        Nota : ¿Generar un nuevo contexto?
-        '''
-        self.In_Loop = True #poner en true para que continue y break funcionen
-        self.visit(node.expr, env)
-        env = Symtab(env) #?????
-        self.visit(node.stmt, env)
-        self.In_Loop = False #cuando acaba el bucle, poner en false
-
-    def visit(self, node: ForLoop, env: Symtab):
-        self.In_Loop = True
-        self.visit(node.begin, env) 
-        self.visit(node.expr, env)
-        self.visit(node.end, env)
-        self.visit(node.stmt, env)
-        self.In_Loop = False
-
-    def visit(self, node: Return, env: Symtab):
-        '''
-        1. Visitar expresion
-        '''
-        if node.expr:
-            self.visit(node.expr, env)
+        if not env.amialoop():
+            self.error(f"\x1b[1;31m" + "Continue" + "\x1b[0;31m" + f" no esta dentro de un For/While, linea: {node.lineno}")
     
-    def visit(self, node: Literal, env: Symtab):
-        '''
+    def visit(self, node: CHARACTER, env: Symtab):
         pass
-        '''
+    
+    def visit(self, node: string_literal, env: Symtab):
         pass
-
-    def visit(self, node: Unary, env: Symtab):
-        '''
-        1. Visitar expresion
-        '''
-        self.visit(node.expr, env)
-
-    def visit(self, node: Ident, env: Symtab):
-        '''
-        1. Buscar nombre en la tabla de simbolos (contexto actual)
-        '''
-        result = env.get(node.name)
-        if result is None:
-            self.error(node, f"Checker error, the identifier '{node.name}' is not defined")
-
-    def visit(self, node: Call, env: Symtab):
-        '''
-        1. Buscar la funcion en la tabla de simbolos
-        2. Validar el numero de argumentos pasados
-        3. Visitar las expr de los argumentos
-        '''
-
-        self.visit(node.func, env)
-        result = env.get(node.func.name)
-        if node.args is not None:
-            for arg in node.args:
-                self.visit(arg, env)
-
-        if result is FuncDefinition:
-            if result is not None:
-                if result.parameters is not None:
-                    if len(result.parameters)!=len(node.args):
-                        self.error(node, "Checker error, given arguments don't match expected arguments in Call")
-
-   
+    
+    def visit(self, node: Array, env: Symtab):
+        node.expr.accept(self, env)
+        node.index.accept(self, env)

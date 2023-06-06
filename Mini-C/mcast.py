@@ -39,7 +39,7 @@ agregar mejoras de usabilidad más adelante.
 '''
 from dataclasses import dataclass, field
 from multimethod import multimeta
-from typing      import List
+from typing      import List, Any
 
 
 
@@ -91,163 +91,165 @@ class Declaration(Statement):
 # ----------------------------------------------------------------------
 
 # Declaraciones
-
-@dataclass
-class FuncDefinition(Declaration):
-    type  : str 
-    name  : str
-    params: List[Declaration] = field(default_factory=list)
-    stmts : List[Statement] = field(default_factory=list)
-    static: bool = False
-    extern: bool = False
-
-@dataclass
-class VarDefinition(Declaration):
-    type : str
-    expr : Expression
-    extern : bool = False
-    static : bool = False
-
-@dataclass
-class Parameter(Declaration):
-    type : str
-    name : str
-
-
-@dataclass
-class ParamList(Declaration):
-    params : List[Parameter]
-    ellipsis : bool = False 
-    
-# Statement
-
-@dataclass
-class TranslationUnit(Statement):
-    decl : List[Statement] = field(default_factory=list)
-
-@dataclass
-class CompoundStmt(Statement):
-    decl :  List[Declaration] = field(default_factory=list)
-    stmt :  List[Statement] = field(default_factory=list)
-
-@dataclass
-class Assignment(Statement):
-    op  : str
-    loc : Expression
-    expr: Expression
-
-@dataclass
-class WhileLoop(Statement):
-    expr : Expression
-    stmt : Statement
-
-
-@dataclass
-class ForLoop(Statement):
-    begin : Statement
-    expr  : Expression
-    end   : Statement
-    stmt  : Statement
-
-
-@dataclass
-class Continue(Statement):
-    pass
-
 @dataclass
 class Return(Statement):
-    expr  : Expression = None
+  expr: List[Expression] = field(default_factory=list)
 
 @dataclass
-class Break(Statement):
-    pass
+class ID(Node):
+    name : str
+    lineno: int = 0
+
+@dataclass
+class INUMBER(Node):
+    name : str
+
+@dataclass
+class FNUMBER(Node):
+    name : str
+
+@dataclass
+class CONST(Node):
+    name : str
+
+@dataclass
+class CHARACTER(Node):
+    name : str
+
+@dataclass
+class string_literal(Node):
+    name : str
+
 
 @dataclass
 class IfStmt(Statement):
     cond   : Expression
-    cons   : List [Statement]=field(default_factory=list) #el consecuente
+    cons   : List [Statement]=field(default_factory=list)
     altr   : List [Statement]=field(default_factory=list)
 
-
-
-
-# Expresiones
-
 @dataclass
-class Integer(Literal):
-    type  : str = field(init=False, default='int')
-    value : int
-
-@dataclass
-class Float(Literal):
-    type  : str = field(init=False, default='float')
-    value : float
-
-@dataclass
-class Char(Literal):
-    type  : str = field(init=False, default='char')
-    value : str
-
-    def __post_init__(self):
-        assert len(self)
-
-@dataclass
-class String(Literal):
-    type  : str = field(init=False, default='char *')
-    value : str
+class WhileStmt(Statement):
+	cond: Expression
+	body: List[Statement]=field(default_factory=list)
 
 
 @dataclass
-class Binary(Expression):
-    op   : str 
-    left : Expression
-    right: Expression
+class For(Statement):
+  init : Statement
+  expr : Expression
+  post : Statement
+  stmts: List[Statement]=field(default_factory=list)
+
+@dataclass
+class Continue(Statement):
+	lineno: int = 0
+
+@dataclass
+class Break(Statement):
+	lineno: int = 0
+	
+@dataclass
+class CompoundStmt(Statement):
+	stmts: List[Statement]=field(default_factory=list)
+	
+@dataclass
+class NullStmt(Statement):
+	name: str=';'
 
 
 @dataclass
-class Variable(Expression):
-    name : str
-
-@dataclass
-class Ident(Expression):
-    name : str
+class Parameter(Declaration):
+  int : str
+  name: str
+#------------------------------------------------------------
+#Expression
+#------------------------------------------------------------
 
 @dataclass
 class Unary(Expression):
-    op : str
-    expr : Expression
-
+	op: str
+	expr: Expression
+	
 @dataclass
-class Pointer(Unary):
-    pass
-
-@dataclass
-class Negative(Unary):
-    pass
-
-@dataclass
-class Not(Unary):
-    pass
-
-@dataclass
-class Pointer(Unary):
-    pass
-
-@dataclass
-class AddrOf(Unary):
-    pass
-
+class Binary(Expression):
+	left : Expression
+	op   : str
+	right: Expression
 
 
 @dataclass
-class Array(Expression):
-    expr : Expression
-    index : Expression
+class Return(Statement):
+    expr: Expression = None
+    lineno: int = 0
+	
+@dataclass
+class Literal(Expression):
+	value: Any
 
+	
+@dataclass
+class Variable(Literal):
+    name: str
+    
 @dataclass
 class Call(Expression):
-    func : Expression
-    arglist : List[Expression] = field(default_factory=list)
+	func: str
+	args: List[Expression] = field(default_factory=list)
+	
+@dataclass
+class Array(Expression):
+  expr : Expression
+  index: Expression
+	
+	
+
+#------------------------------------------------------------
+#Declaration
+#------------------------------------------------------------
+
+@dataclass
+class FuncDeclaration(Declaration):
+	name: str
+	params: List[Expression]=field(default_factory=list)
+	body: List[Statement]=field(default_factory=list)
+	Static:bool=False
+	lineno: int = 0
+
+@dataclass
+class VarDeclaration(Declaration):
+	name: str
+	expr: Expression
+	Ext:bool=False
+	Static : bool = False
+	lineno: int = 0
+
+@dataclass
+class ConstDeclaration(Declaration):
+    name: str
+    value: Expression
+    
+@dataclass
+class TypeDeclaration(Statement):
+    Type: str
+    body: Statement
+    lineno: int = 0
+
+@dataclass
+class FuncDeclarationStmt(Statement):
+	name: str
+	body: List[Statement]=field(default_factory=list)
+
+@dataclass
+class TranslationUnit(Statement):
+	decls : List[Statement]
+
+@dataclass
+class Parameter_declaration(Statement):
+	decls : List[Statement]
 
 
 
+@dataclass
+class ParamList(Declaration):
+    params  : List[Parameter]
+    ellipsis: bool = False

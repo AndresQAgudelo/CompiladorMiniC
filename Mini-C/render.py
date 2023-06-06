@@ -37,229 +37,164 @@ class RenderAST(Visitor):
         n.accept(dot)
         return dot.dot
     
-    def visit(self, node : TranslationUnit):
+    def visit(self, n:TranslationUnit):
         name = self.name()
-        self.dot.node(name,
-            label="TranslationUnit\\n"
-            )
-        for n in node.decl:
-            print(n)
-            self.dot.edge(name, self.visit(n))
-            
-        return name
+        self.dot.node(name, label='Funcion')
+        for i in n.decls:
+            self.dot.edge(name, i.accept(self))
 
-# ---------- DECLARATION -------------
-        
-    def visit(self, node : FuncDefinition):
+    def visit(self, n:FuncDeclaration):
         name = self.name()
-        self.dot.node(name,
-            label=f"FuncDefinition  \n type : {node.type} \n static : {node.static} \n extern : {node.extern}",
-            )
-        
-        self.dot.edge(name, self.visit(node.name))
-        print(node.params)
-        self.dot.edge(name, self.visit(node.params) )
-        print(node.stmts)
-        self.dot.edge(name, self.visit(node.stmts))
-        
+        self.dot.node(name, label=f"Func Declaration\ntype:{n.name} \nexternal:{n.Static}\n")
+        self.dot.edge(name, n.params.accept(self))
+        for i in n.body:
+            self.dot.edge(name, i.accept(self))
         return name
-
-    def visit(self, node : VarDefinition):
+    def visit(self, n:FuncDeclarationStmt):
         name = self.name()
-        self.dot.node(name,
-            label=fr"VarDefinition\ntype:'{node.type}'\nextern: '{node.extern} \nstatic: '{node.static}'"
-            )
-        
-        if node.expr:
-            self.dot.edge(name, self.visit(node.expr))
+        self.dot.node(name, label=f"Funcion \nname:{n.name} \n")
+        for i in n.body:
+            self.dot.edge(name, i.accept(self))
+        return name
+    def visit(self, n:TypeDeclaration):
+        name = self.name()
+        if type(n.body) != str:
+            self.dot.node(name, label=f"Param\nType:{n.Type} \n")
+            self.dot.edge(name, n.body.accept(self))
+        else: 
+             self.dot.node(name, label=f"Param\nType:{n.Type} \n name:{n.body}")
         return name
     
-    def visit(self, node: ParamList):
+    def visit(self, n:Parameter_declaration):
         name = self.name()
-        self.dot.node(name,
-            label=f"ParamList \n ellipsis : {node.ellipsis} ",
-            )
-
-        if node.params:
-            for n in node.params:
-                self.dot.edge(name, self.visit(n))
-        
+        self.dot.node(name, label='ParamDeclaracion')
+        for i in n.decls:
+            self.dot.edge(name, i.accept(self))
+    
+    def visit(self, n:VarDeclaration):
+        name = self.name()
+        if type(n.expr ) != str: 
+            self.dot.node(name, label=f'Var declaration\ntype: {n.name}')
+            self.dot.edge(name, n.expr.accept(self))
+        else: 
+            self.dot.node(name, label=f'Var declaration\ntype: {n.name}\nname: {n.expr}')
         return name
-
-    def visit(self, node :Parameter):
+    
+    def visit(self, n:WhileStmt):
         name = self.name()
-        self.dot.node(name, label= f"Parameter \n type :{node.type}")
-        self.dot.edge(name, self.visit(node.name))
+        self.dot.node(name, label=f'while\cond: ')
+       
+        self.dot.edge(name, n.cond.accept(self))
+        for i in n.body:
+            self.dot.edge(name, i.accept(self))
         
         return name
     
-    # -------- STATEMENT ---------------
-
-    def visit(self, node : CompoundStmt):
+    def visit(self, n:For):
         name = self.name()
-        self.dot.node(name,
-            label="CompountStmt",
-            )
-        if node.decl:
-            for n in node.decl:
-                self.dot.edge(name, self.visit(n), label= 'decl')
+        self.dot.node(name, label=f'For\cond: ')
+       
+        self.dot.edge(name, n.init.accept(self))
+        self.dot.edge(name, n.expr.accept(self))
+        self.dot.edge(name, n.post.accept(self))
+        for i in n.stmts:
+            self.dot.edge(name, i.accept(self))
         
-        if node.stmt:
-            for n in node.stmt:
-                self.dot.edge(name, self.visit(n), label= 'stmt')
-
         return name
+     
+    def visit(self, n:IfStmt):
+        name = self.name()
+        self.dot.node(name, label=f'If\cond: ')
+        self.dot.edge(name, n.cond.accept(self))
+        for i in n.cons:
+            self.dot.edge(name, i.accept(self))
+
+        for i in n.altr:
+            self.dot.edge(name, i.accept(self),label=f'Else:')
         
-    def visit(self, node:Assignment):
-        name = self.name()
-        self.dot.node(name, label=f"Assignment \n op : {node.op} ")
-        self.dot.edge(name, node.loc.accept(self))
-        self.dot.edge(name, node.expr.accept(self))
-        return name
-
-    def visit(self, node:Binary):
-        name = self.name()
-        self.dot.node(name, label=f"Binary \n op : {node.op} ")
-        self.dot.edge(name, node.left.accept(self))
-        self.dot.edge(name, node.right.accept(self))
         return name
 
-    def visit(self, node: WhileLoop):
+
+    def visit(self, n:Unary):
         name = self.name()
-        self.dot.node(name, label=f"WhileLoop")
-
-        if node.expr:
-            self.dot.edge(name, self.visit(node.expr), label= 'expr')
-
-        if node.stmt:
-            self.dot.edge(name, self.visit(node.stmt), label= 'stmt')
-        
+        self.dot.node(name, label=f"Unary\\nop={n.op}")
+        self.dot.edge(name, n.expr.accept(self))
         return name
     
-    def visit(self, node: ForLoop):
+    def visit(self, n:Binary):
         name = self.name()
-        self.dot.node(name, label= "ForLoop")
+        self.dot.node(name, label=f"Binary\\nop:{n.op}")
+        self.dot.edge(name, n.left.accept(self))
+        self.dot.edge(name, n.right.accept(self))
+        return name
 
-        if node.begin:
-            self.dot.edge(name, self.visit(node.begin), label= ' begin')
-        
-        if node.expr:
-            self.dot.edge(name, self.visit(node.expr), label= ' expr')
-        
-        if node.end:
-            self.dot.edge(name, self.visit(node.end), label= 'end')
-        
-        if node.stmt:
-            self.dot.edge(name, self.visit(node.stmt), label= 'stmt')
-
+    def visit(self, n:Variable):
+        name = self.name()
+        self.dot.node(name, label=f"Ident\\nname={n.name}")
         return name
     
-    def visit(self, node: Continue):
+    def visit(self, n:Break):
         name = self.name()
-        self.dot.node(name, label= "Continue")
-        return name
-
-    def visit(self, node: Break):
-        name = self.name()
-        self.dot.node(name, label= "Break")
-        return name
-
-    def visit(self, node: Return):
-        name = self.name()
-        self.dot.node(name, label= "Return")
-        self.dot.edge(name, self.visit(node.expr))
-        return name
-        
-    def visit(self, node: IfStmt):
-        name = self.name()
-        self.dot.node(name, label = "IfStmt")
-        if node.cond:
-            self.dot.edge(name, self.visit(node.cond), label='cond')
-        if node.cons:
-            self.dot.edge(name, self.visit(node.cons), label='cons')
-        if node.altr:
-            self.dot.edge(name, self.visit(node.altr), label='altr')
-        return name
-
-# ------- EXPRESIONN ----------------
-
-    def visit(self, node:Integer):
-        name = self.name()
-        self.dot.node(name, label=f"Integer \n type :'{node.type}\n name :'{node.value}")
-        return name
-
-    def visit(self, node:Float):
-        name = self.name()
-        self.dot.node(name, label=f"Float \n type :'{node.type}\n name :'{node.value}")
-        return name
-
-    def visit(self, node:Char):
-        name = self.name()
-        self.dot.node(name, label=f"Char \n type :'{node.type}\n name :'{node.value}")
-        return name
-
-    def visit(self, node:String):
-        name = self.name()
-        self.dot.node(name, label=f"String \n type :'{node.type}\n name :'{node.value}")
-        return name
-
-    def visit(self, node:Ident):
-        name = self.name()
-        self.dot.node(name, label=f"Ident \n name :'{node.name}'")
+        self.dot.node(name, label=f"Break")
         return name
     
-    def visit(self, node:Pointer):
+    def visit(self, n:Continue):
         name = self.name()
-        self.dot.node(name, label=f"Pointer \n op : *")
-
-        self.dot.edge(name,self.visit(node.expr) )
-        return name
-
-    def visit(self, node:Negative):
-        name = self.name()
-        self.dot.node(name, label=f"Negative \n op : -")
-
-        self.dot.edge(name,self.visit(node.expr) )
+        self.dot.node(name, label=f"Continue")
         return name
     
-    def visit(self, node:Unary):
+    def visit(self, n:ID):
         name = self.name()
-        self.dot.node(name, label=f"Unary \n op : +")
-
-        self.dot.edge(name,self.visit(node.expr) )
+        self.dot.node(name, label=f"ID={n.name}")
         return name
-
-    def visit(self, node:Not):
+    
+    def visit(self, n:INUMBER):
         name = self.name()
-        self.dot.node(name, label=f"Not \n op : !")
-
-        self.dot.edge(name,self.visit(node.expr) )
+        self.dot.node(name, label=f"INUMBER={n.name}")
         return name
-
-    def visit(self, node:AddrOf):
+    
+    def visit(self, n:FNUMBER):
         name = self.name()
-        self.dot.node(name, label=f"Negative \n op : &")
-
-        self.dot.edge(name,self.visit(node.expr) )
+        self.dot.node(name, label=f"FNUMBER={n.name}")
         return name
-
-    def visit(self, node:Array):
+    
+    def visit(self, n:CONST):
         name = self.name()
-        self.dot.node(name, label=f"Array")
-
-        self.dot.edge(name,self.visit(node.expr) )
-        self.dot.edge(name,self.visit(node.index) )
+        self.dot.node(name, label=f"CONST={n.name}")
         return name
-
-    def visit(self, node:Call):
+    
+    def visit(self, n:CHARACTER):
+        name = self.name()
+        self.dot.node(name, label=f"CHARACTER={n.name}")
+        return name
+    
+    def visit(self, n:string_literal):
+        name = self.name()
+        self.dot.node(name, label=f"string literal={n.name}")
+        return name
+    
+    def visit(self, n:Return):
+        name = self.name()
+        self.dot.node(name, label=f"Return:")
+        if n.expr:
+            self.dot.edge(name, n.expr.accept(self))
+        return name
+    
+    def visit(self, n:Call):
         name = self.name()
         self.dot.node(name, label=f"Call")
-
-        self.dot.edge(name,self.visit(node.func), label="func" )
-        
-        self.dot.edge(name,self.visit(node.arglist))
+        self.dot.edge(name, n.func.accept(self))
+        for i in n.args:
+            self.dot.edge(name, i.accept(self))
         return name
-
+    
+    def visit(self, n:Array):
+        name = self.name()
+        self.dot.node(name, label=f"Array")
+        self.dot.edge(name, n.expr.accept(self))
+        self.dot.edge(name, n.index.accept(self))
+        
+        return name
 
     
 if __name__ == '__main__':

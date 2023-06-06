@@ -94,7 +94,7 @@ class Lexer(sly.Lexer):
         FOR, IF, INT, RETURN, STATIC, VOID, WHILE,
 
         # Operadores
-        LE, GE, EQ, NE, LAND, LOR,
+        LE, GE, EQ, NE, LAND, LOR, LT, GT,
         ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
 
         # Tokens complejos
@@ -110,6 +110,8 @@ class Lexer(sly.Lexer):
     GE = r'>='
     EQ = r'=='
     NE = r'!='
+    LT = r'<'
+    GT = r'>'
 
     # Operadores logicos
     LOR  = r'\|\|'
