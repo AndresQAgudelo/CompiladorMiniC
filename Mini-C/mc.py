@@ -67,7 +67,7 @@ def parse_args():
 
     mutex.add_argument(
     '-p',
-    '--png',
+    '--par',
     action='store_true',
     help='Generate AST graph as png format')
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         tokens = l.tokenize(txt)
 
         if args.lex:
-            print(f"{i}, -------------------------------------------")
+            print(f"{i}, --------------------- LEXER ----------------------")
             for token in tokens: 
                 print(token)
         
@@ -99,15 +99,14 @@ if __name__ == '__main__':
         dot = RenderAST.render(ast)
 
         if args.dot: 
+            print(f"{i}, --------------------- DOT ----------------------")
             f = open(f'{i}.dot','w')
             f.write(str(dot))
             f.close()
 
-        if args.png:
-            f = open(f'{i}.dot','w')
-            f.write(str(dot))
-            f.close()
-            check_call(['dot','-Tpng',f'{i}.dot','-o',f'{i}.png'])
+        if args.par:
+            print(f"{i}, --------------------- PARSER ----------------------")
+            print(ast)
 
         checker = Checker().check(ast, symtable = args.sym)
 
